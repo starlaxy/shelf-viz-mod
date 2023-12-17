@@ -1,0 +1,24 @@
+@inject ISKUService SKUService
+
+<div class="sku-management">
+    <button @onclick="ShowAddSKUModal">Add SKU</button>
+    <!-- SKU Management UI elements here -->
+</div>
+
+<!-- Modal for Adding SKU -->
+<EditSKUModal IsVisible="@showAddSKUModal" OnClose="HandleModalClose" />
+
+@code {
+    private bool showAddSKUModal = false;
+
+    private void ShowAddSKUModal()
+    {
+        showAddSKUModal = true;
+    }
+
+    private void HandleModalClose()
+    {
+        showAddSKUModal = false;
+        // Reload or update SKU list if needed
+    }
+}

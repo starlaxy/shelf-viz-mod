@@ -1,0 +1,57 @@
+@inject IShelfService ShelfService
+@inject ISKUService SKUService
+
+<div class="shelf-layout">
+    @if (shelves is null || SKUs is null)
+    {
+        <p>Loading shelves and SKUs...</p>
+    }
+    else
+    {
+        @foreach (var shelf in shelves)
+        {
+            <div class="shelf">
+                @foreach (var row in shelf.Rows)
+                {
+                    <div class="row">
+                        @foreach (var lane in row.Lanes)
+                        {
+                            <div class="lane">
+                                @foreach (var janCode in lane.JanCodes)
+                                {
+                                    RenderSKU(janCode);
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IEnumerable<Shelf> shelves;
+    private IEnumerable<SKU> SKUs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        shelves = await ShelfService.GetShelvesAsync();
+        SKUs = await SKUService.GetAllSKUsAsync();
+    }
+
+    private RenderFragment RenderSKU(string janCode) => builder =>
+    {
+        var sku = SKUs.FirstOrDefault(s => s.JanCode == janCode);
+        if (sku != null)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "sku-item");
+            builder.AddAttribute(2, "style", $"background-image: url('{sku.ImageUrl}')");
+            builder.OpenElement(3, "span");
+            builder.AddContent(4, sku.Name);
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+    };
+}
