@@ -1,84 +1,55 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using shelf_viz_mod.Data.Models;  // Ensure this matches your project's structure
+using CsvHelper;
+using System.Globalization;
+using System.IO;
+using System.Reactive.Subjects;
+using Blazored.LocalStorage;
+using shelf_viz_mod.Data.Services;
 
-namespace shelf_viz_mod.Data.Services
+public class SKUService : ISKUService
 {
-    public class SKUService : ISKUService
+    private readonly ILocalStorageService _localStorage;
+    private readonly BehaviorSubject<IEnumerable<SKU>> _skusSubject;
+    private IEnumerable<SKU>? _skus;
+
+
+    public SKUService(ILocalStorageService localStorage)
     {
-        private readonly List<SKU> _skus;
+        _localStorage = localStorage;
+        _skusSubject = new BehaviorSubject<IEnumerable<SKU>>(new List<SKU>());
+    }
 
-        public SKUService()
+    public async Task InitializeFromCsvAsync(string filePath)
+    {
+        using var reader = new StreamReader(filePath);
+        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+
+        var skusList = new List<SKU>();
+        await foreach (var record in csv.GetRecordsAsync<SKU>())
         {
-            _skus = new List<SKU>
-            {
-                // Initialize with some mock data
-                new SKU { JanCode = "12345", Name = "Beverage 1", /* other properties */ },
-                new SKU { JanCode = "67890", Name = "Beverage 2", /* other properties */ }
-            };
+            skusList.Add(record);
         }
 
-        public async Task<IEnumerable<SKU>> GetAllSKUsAsync()
-        {
-            // In a real application, replace this with actual data access code
-            return await Task.FromResult(_skus);
-        }
+        _skus = skusList;
+        _skusSubject.OnNext(_skus);
 
-        public async Task<SKU> GetSKUByIdAsync(string janCode)
-        {
-            var sku = _skus.FirstOrDefault(s => s.JanCode == janCode);
-            return await Task.FromResult(sku);
-        }
+        // Optionally store to local storage for persistence across sessions
+        await _localStorage.SetItemAsync("skus", _skus);
+    }
 
-        public async Task AddSKUAsync(SKU newSKU)
-        {
-            if (newSKU == null)
-                throw new ArgumentNullException(nameof(newSKU));
+    public IObservable<IEnumerable<SKU>> GetAllSKUsAsync()
+    {
+        return _skusSubject.AsObservable();
+    }
 
-            if (!_skus.Any(s => s.JanCode == newSKU.JanCode))
-            {
-                _skus.Add(newSKU);
-            }
-            else
-            {
-                throw new InvalidOperationException($"SKU with JanCode {newSKU.JanCode} already exists.");
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public async Task UpdateSKUAsync(SKU updatedSKU)
-        {
-            if (updatedSKU == null)
-                throw new ArgumentNullException(nameof(updatedSKU));
-
-            var skuIndex = _skus.FindIndex(s => s.JanCode == updatedSKU.JanCode);
-            if (skuIndex != -1)
-            {
-                _skus[skuIndex] = updatedSKU;
-            }
-            else
-            {
-                throw new KeyNotFoundException($"SKU with JanCode {updatedSKU.JanCode} not found.");
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public async Task DeleteSKUAsync(string janCode)
-        {
-            var sku = _skus.FirstOrDefault(s => s.JanCode == janCode);
-            if (sku != null)
-            {
-                _skus.Remove(sku);
-            }
-            else
-            {
-                throw new KeyNotFoundException($"SKU with JanCode {janCode} not found.");
-            }
-
-            await Task.CompletedTask;
-        }
+    public IObservable<SKU?> GetSKUByJanCodeAsync(string janCode)
+    {
+        return _skusSubject.AsObservable()
+            .SelectMany(skus => skus)
+            .Where(sku => sku.JanCode == janCode)
+            .FirstOrDefaultAsync();
     }
 }

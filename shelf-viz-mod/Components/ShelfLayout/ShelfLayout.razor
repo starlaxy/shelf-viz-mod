@@ -17,10 +17,7 @@
                         @foreach (var lane in row.Lanes)
                         {
                             <div class="lane">
-                                @foreach (var janCode in lane.JanCodes)
-                                {
-                                    RenderSKU(janCode);
-                                }
+                                @RenderSKU(lane.JanCode)
                             </div>
                         }
                     </div>
