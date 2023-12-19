@@ -1,54 +1,104 @@
+@using shelf_viz_mod.Data.Services
+@using shelf_viz_mod.Data.Models
 @inject IShelfService ShelfService
-@inject ISKUService SKUService
+@inject ISKUService SkuService
+@using System.Reactive.Linq;
+@using System.Reactive.Threading.Tasks;
+@using System.Reactive.Disposables;
+@implements IDisposable
 
-<div class="shelf-layout">
-    @if (shelves is null || SKUs is null)
+<div class="shelf-layout-container">
+    @if (cabinets != null && cabinets.Any())
     {
-        <p>Loading shelves and SKUs...</p>
-    }
-    else
-    {
-        @foreach (var shelf in shelves)
+        foreach (var cabinet in cabinets)
         {
-            <div class="shelf">
-                @foreach (var row in shelf.Rows)
+            <div class="cabinet">
+                <h3>Cabinet Number: @cabinet?.Number</h3>
+                @foreach (var row in cabinet?.Rows ?? Enumerable.Empty<Row>())
                 {
                     <div class="row">
-                        @foreach (var lane in row.Lanes)
-                        {
-                            <div class="lane">
-                                @RenderSKU(lane.JanCode)
-                            </div>
-                        }
+                        <h4>Row Number: @row?.Number</h4>
+                        <div class="lanes">
+                            @foreach (var lane in row?.Lanes ?? Enumerable.Empty<Lane>())
+                            {
+                                <SKUComponent Name=@GetSkuName(lane.JanCode) ImageUrl=@GetSkuImageUrl(lane.JanCode)
+                                              CabinetId=cabinet.Number RowId=row.Number LaneId=lane.Number />
+                            }
+                        </div>
                     </div>
                 }
             </div>
         }
     }
+    else
+    {
+        <p>No cabinet data available.</p>
+    }
 </div>
 
 @code {
-    private IEnumerable<Shelf> shelves;
-    private IEnumerable<SKU> SKUs;
+    private IEnumerable<Cabinet?>? cabinets;
+    private List<SKU> skus = new List<SKU>();
+    private readonly CompositeDisposable disposables = new CompositeDisposable();
 
     protected override async Task OnInitializedAsync()
     {
-        shelves = await ShelfService.GetShelvesAsync();
-        SKUs = await SKUService.GetAllSKUsAsync();
+        await ShelfService.InitializeAsync(); // Initialize ShelfService asynchronously
+        ShelfService.CabinetsUpdated += OnCabinetsUpdated;
+
+        var shelfSubscription = ShelfService.GetAllCabinetsAsync()
+            .Subscribe(async cabinetsData =>
+            {
+                await InvokeAsync(() =>
+                {
+                    cabinets = cabinetsData;
+                    StateHasChanged(); // Re-render the component on the main thread
+                });
+            });
+
+        await SkuService.InitializeAsync(); // Assuming SkuService also requires async initialization
+        var skuSubscription = SkuService.GetAllSKUsAsync()
+            .Subscribe(skuData =>
+            {
+                skus = skuData.ToList();
+                InvokeAsync(StateHasChanged); // Trigger re-render
+            });
+
+        disposables.Add(shelfSubscription);
+        disposables.Add(skuSubscription);
     }
 
-    private RenderFragment RenderSKU(string janCode) => builder =>
+    private string GetSkuName(string janCode)
     {
-        var sku = SKUs.FirstOrDefault(s => s.JanCode == janCode);
-        if (sku != null)
+        var sku = skus.FirstOrDefault(s => s.JanCode == janCode);
+        return sku?.Name ?? "Unknown SKU";
+    }
+
+    private string GetSkuImageUrl(string janCode)
+    {
+        var sku = skus.FirstOrDefault(s => s.JanCode == janCode);
+        return sku?.ImageURL ?? string.Empty;
+    }
+
+    private void OnCabinetsUpdated()
+    {
+        InvokeAsync(async () =>
         {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "sku-item");
-            builder.AddAttribute(2, "style", $"background-image: url('{sku.ImageUrl}')");
-            builder.OpenElement(3, "span");
-            builder.AddContent(4, sku.Name);
-            builder.CloseElement();
-            builder.CloseElement();
+            Console.WriteLine("OnCabinetsUpdated triggered");            
+            cabinets = await ShelfService.GetAllCabinetsAsync().FirstOrDefaultAsync();
+            Console.WriteLine(cabinets); 
+            StateHasChanged(); // Re-render the component
+        });
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from the CabinetsUpdated event to avoid memory leaks
+        if (ShelfService != null)
+        {
+            ShelfService.CabinetsUpdated -= OnCabinetsUpdated;
         }
-    };
+
+        disposables.Dispose();
+    }
 }

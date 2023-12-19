@@ -22,5 +22,10 @@ namespace shelf_viz_mod.Data.Services
         Task DeleteCabinetAsync(int cabinetId);
         Task DeleteRowAsync(int cabinetId, int rowId);
         Task DeleteLaneAsync(int cabinetId, int rowId, int laneId);
+        Task InitializeAsync();
+        Task SwapLanesAsync(int sourceCabinetId, int sourceRowId, int sourceLaneId,
+                            int targetCabinetId, int targetRowId, int targetLaneId);
+        event Action CabinetsUpdated;
+
     }
 }

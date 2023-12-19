@@ -1,43 +1,54 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
+using Blazored.LocalStorage;
 using CsvHelper;
 using System.Globalization;
 using System.IO;
-using System.Reactive.Subjects;
-using Blazored.LocalStorage;
+using shelf_viz_mod.Data.Models;
 using shelf_viz_mod.Data.Services;
 
 public class SKUService : ISKUService
 {
     private readonly ILocalStorageService _localStorage;
     private readonly BehaviorSubject<IEnumerable<SKU>> _skusSubject;
-    private IEnumerable<SKU>? _skus;
+    private readonly HttpClient _httpClient;
 
-
-    public SKUService(ILocalStorageService localStorage)
+    public SKUService(ILocalStorageService localStorage, HttpClient httpClient)
     {
         _localStorage = localStorage;
+        _httpClient = httpClient;
         _skusSubject = new BehaviorSubject<IEnumerable<SKU>>(new List<SKU>());
     }
 
-    public async Task InitializeFromCsvAsync(string filePath)
+    public async Task InitializeAsync()
     {
-        using var reader = new StreamReader(filePath);
+        var skusFromStorage = await _localStorage.GetItemAsync<List<SKU>>("skus");
+        if (skusFromStorage == null || !skusFromStorage.Any())
+        {
+            await LoadDataFromCsvAsync(); // Load from CSV and update local storage
+        }
+        else
+        {
+            _skusSubject.OnNext(skusFromStorage); // Use data from local storage
+        }
+    }
+
+    private async Task LoadDataFromCsvAsync()
+    {
+        var csvContent = await _httpClient.GetStringAsync("sample-data/sku.csv");
+        using var reader = new StringReader(csvContent);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
 
-        var skusList = new List<SKU>();
-        await foreach (var record in csv.GetRecordsAsync<SKU>())
-        {
-            skusList.Add(record);
-        }
+        var skusList = csv.GetRecords<SKU>().ToList();
 
-        _skus = skusList;
-        _skusSubject.OnNext(_skus);
+        _skusSubject.OnNext(skusList);
 
-        // Optionally store to local storage for persistence across sessions
-        await _localStorage.SetItemAsync("skus", _skus);
+        await _localStorage.SetItemAsync("skus", skusList); // Save to local storage
     }
 
     public IObservable<IEnumerable<SKU>> GetAllSKUsAsync()

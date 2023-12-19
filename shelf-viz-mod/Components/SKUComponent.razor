@@ -1,0 +1,78 @@
+@inject IShelfService ShelfService
+@inject IDragStateService DragStateService
+
+<div class="sku-item @(DragStateService.IsDragging ? "dragging" : "")"
+     draggable="true"
+     @ondragstart="StartDrag"
+     @ondragend="EndDrag"
+     @ondrop="() => HandleDrop()"
+     ondragover="event.preventDefault();"
+      >
+    <div class="name-container">
+        <h5>@GetPartBeforeSlash(Name)</h5>
+    </div>
+    <div class="sku-image-container">
+        <img src="@ImageUrl" alt="@Name" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string ImageUrl { get; set; } = string.Empty;
+    [Parameter] public int CabinetId { get; set; }
+    [Parameter] public int RowId { get; set; }
+    [Parameter] public int LaneId { get; set; }
+
+    private static int sourceCabinetId;
+    private static int sourceRowId;
+    private static int sourceLaneId;
+
+    protected override void OnInitialized()
+    {
+        DragStateService.OnDragStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        DragStateService.OnDragStateChanged -= StateHasChanged;
+    }
+
+    private void StartDrag()
+    {
+        sourceCabinetId = CabinetId;
+        sourceRowId = RowId;
+        sourceLaneId = LaneId;
+        Console.WriteLine($"StartDrag. Source: Cabinet {sourceCabinetId}, Row {sourceRowId}, Lane {sourceLaneId} to Target: Cabinet {CabinetId}, Row {RowId}, Lane {LaneId}");
+    
+        DragStateService.StartDragging();
+    }
+
+    private void EndDrag()
+    {
+        DragStateService.EndDragging();
+        Console.WriteLine("EndDrag");
+    }
+
+    private async Task HandleDrop()
+{
+    Console.WriteLine($"Handling drop. Source: Cabinet {sourceCabinetId}, Row {sourceRowId}, Lane {sourceLaneId} to Target: Cabinet {CabinetId}, Row {RowId}, Lane {LaneId}");
+    
+    await ShelfService.SwapLanesAsync(sourceCabinetId, sourceRowId, sourceLaneId, CabinetId, RowId, LaneId);
+
+}
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"SKUComponent updated: Name={Name}, ImageUrl={ImageUrl}, CabinetId={CabinetId}, RowId={RowId}, LaneId={LaneId}");
+    }
+
+    private string GetPartBeforeSlash(string input)
+    {
+        int slashIndex = input.IndexOf('/');
+        if (slashIndex >= 0)
+        {
+            return input.Substring(0, slashIndex);
+        }
+        return input;
+    }
+
+   }

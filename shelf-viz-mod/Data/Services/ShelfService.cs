@@ -1,54 +1,56 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Reactive.Subjects;
-using System.Reactive.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Blazored.LocalStorage;
 using shelf_viz_mod.Data.Models;
 using Microsoft.Extensions.Logging;
+using System.Reactive.Subjects;
+using System.Reactive.Linq;
+using System.Runtime.CompilerServices;
+using System.Linq;
 
+[assembly: InternalsVisibleTo("shelf-viz-mod.Tests")]
 namespace shelf_viz_mod.Data.Services
 {
     public class ShelfService : IShelfService
     {
-        private readonly ILocalStorageService _localStorage;
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ShelfService> _logger;
+        private readonly IScopedServiceFactory _scopedServiceFactory;
         private BehaviorSubject<IEnumerable<Cabinet>> _cabinetSubject;
+        public event Action CabinetsUpdated = delegate { };
 
-        private ShelfService(ILocalStorageService localStorage, HttpClient httpClient, ILogger<ShelfService> logger)
+        public ShelfService(IHttpClientFactory httpClientFactory, ILogger<ShelfService> logger, IScopedServiceFactory scopedServiceFactory)
         {
-            _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(new List<Cabinet>()); // Initialized with an empty list
+            _scopedServiceFactory = scopedServiceFactory ?? throw new ArgumentNullException(nameof(scopedServiceFactory));
+            _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(new List<Cabinet>());
         }
-
-        public static async Task<ShelfService> CreateAsync(ILocalStorageService localStorage, HttpClient httpClient, ILogger<ShelfService> logger)
+        public async Task InitializeAsync()
         {
-            var service = new ShelfService(localStorage, httpClient, logger);
-            await service.LoadDataAsync();
-            return service;
+            await InitializeData();
         }
-
         private async Task LoadDataAsync()
         {
             try
             {
-                var jsonData = await _httpClient.GetStringAsync("sample-data/shelf.json");
-                var cabinets = JsonSerializer.Deserialize<List<Cabinet>>(jsonData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var httpClient = _httpClientFactory.CreateClient();
+                var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+                var jsonData = await httpClient.GetStringAsync("sample-data/shelf.json");
+                var shelfData = JsonSerializer.Deserialize<ShelfData>(jsonData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                if (cabinets != null)
+                if (shelfData?.Cabinets != null)
                 {
-                    await _localStorage.SetItemAsync("shelfLayout", cabinets);
-                    _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(cabinets);
+                    await localStorage.SetItemAsync("shelfLayout", shelfData.Cabinets);
+                    _cabinetSubject.OnNext(shelfData.Cabinets);
                 }
                 else
                 {
                     _logger.LogWarning("No cabinets data found in the JSON file.");
-                    _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(new List<Cabinet>());
+                    _cabinetSubject.OnNext(new List<Cabinet>());
                 }
             }
             catch (Exception ex)
@@ -58,23 +60,50 @@ namespace shelf_viz_mod.Data.Services
             }
         }
 
-
         private async Task InitializeData()
         {
-            try
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
+            if (cabinets == null || !cabinets.Any())
             {
-                var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
-                _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(cabinets);
+                await LoadDataAsync();
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to initialize data in ShelfService");
-                // Reset _cabinetSubject with an empty list 
-                _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(new List<Cabinet>());
+                _cabinetSubject.OnNext(cabinets);
             }
         }
 
+        // Remaining CRUD methods using _scopedServiceFactory to access ILocalStorageService
 
+        public async Task SwapLanesAsync(int sourceCabinetId, int sourceRowId, int sourceLaneId, int targetCabinetId, int targetRowId, int targetLaneId)
+        {
+            _logger.LogInformation("Starting SwapLanesAsync");
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
+
+            // Find the source and target lanes
+            var sourceLane = FindLane(cabinets, sourceCabinetId, sourceRowId, sourceLaneId);
+            var targetLane = FindLane(cabinets, targetCabinetId, targetRowId, targetLaneId);
+
+            if (sourceLane != null && targetLane != null)
+            {
+                // Swap the lane data
+                (sourceLane.JanCode, targetLane.JanCode) = (targetLane.JanCode, sourceLane.JanCode);
+                (sourceLane.Quantity, targetLane.Quantity) = (targetLane.Quantity, sourceLane.Quantity);
+
+                await localStorage.SetItemAsync("shelfLayout", cabinets);
+                _logger.LogInformation("Emitting updated cabinets");
+                _cabinetSubject.OnNext(cabinets);
+            }
+            else
+            {
+                _logger.LogError("Failed to find lanes for swapping.");
+            }
+            _logger.LogInformation("SwapLanesAsync completed successfully");
+
+            CabinetsUpdated?.Invoke();
+        }
         public IObservable<IEnumerable<Cabinet?>> GetAllCabinetsAsync()
         {
             return _cabinetSubject.AsObservable();
@@ -91,19 +120,19 @@ namespace shelf_viz_mod.Data.Services
         {
             return GetCabinetByIdAsync(cabinetId)
                    .Select(cabinet => cabinet?.Rows ?? Enumerable.Empty<Row>());
-
         }
+
         public IObservable<Row?> GetRowByIdAsync(int cabinetId, int rowId)
         {
             return GetRowsInCabinetAsync(cabinetId)
                    .SelectMany(rows => rows)
                    .FirstOrDefaultAsync(row => row?.Number == rowId);
         }
+
         public IObservable<IEnumerable<Lane?>> GetLanesInRowAsync(int cabinetId, int rowId)
         {
             return GetRowByIdAsync(cabinetId, rowId)
                    .Select(row => row?.Lanes ?? Enumerable.Empty<Lane>());
-
         }
 
         public IObservable<Lane?> GetLaneByIdAsync(int cabinetId, int rowId, int laneId)
@@ -112,17 +141,27 @@ namespace shelf_viz_mod.Data.Services
                    .SelectMany(lanes => lanes)
                    .FirstOrDefaultAsync(lane => lane?.Number == laneId);
         }
+        private Lane? FindLane(List<Cabinet> cabinets, int cabinetId, int rowId, int laneId)
+        {
+            return cabinets.FirstOrDefault(c => c.Number == cabinetId)
+                           ?.Rows.FirstOrDefault(r => r.Number == rowId)
+                           ?.Lanes.FirstOrDefault(l => l.Number == laneId);
+        }
+
+
         public async Task DeleteCabinetAsync(int cabinetId)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
             cabinets.RemoveAll(c => c.Number == cabinetId);
-            await _localStorage.SetItemAsync("shelfLayout", cabinets);
+            await localStorage.SetItemAsync("shelfLayout", cabinets);
             _cabinetSubject.OnNext(cabinets);
         }
 
         public async Task UpdateRowAsync(int cabinetId, Row updatedRow)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
             var cabinet = cabinets.FirstOrDefault(c => c.Number == cabinetId);
             if (cabinet != null)
             {
@@ -130,39 +169,42 @@ namespace shelf_viz_mod.Data.Services
                 if (rowIndex != -1)
                 {
                     cabinet.Rows[rowIndex] = updatedRow;
-                    await _localStorage.SetItemAsync("shelfLayout", cabinets);
+                    await localStorage.SetItemAsync("shelfLayout", cabinets);
                     _cabinetSubject.OnNext(cabinets);
                 }
             }
         }
 
-
         public async Task DeleteRowAsync(int cabinetId, int rowId)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
             var cabinet = cabinets.FirstOrDefault(c => c.Number == cabinetId);
             cabinet?.Rows.RemoveAll(r => r.Number == rowId);
-            await _localStorage.SetItemAsync("shelfLayout", cabinets);
+            await localStorage.SetItemAsync("shelfLayout", cabinets);
             _cabinetSubject.OnNext(cabinets);
         }
 
         public async Task DeleteLaneAsync(int cabinetId, int rowId, int laneId)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout");
             var cabinet = cabinets.FirstOrDefault(c => c.Number == cabinetId);
             var row = cabinet?.Rows.FirstOrDefault(r => r.Number == rowId);
             row?.Lanes.RemoveAll(l => l.Number == laneId);
-            await _localStorage.SetItemAsync("shelfLayout", cabinets);
+            await localStorage.SetItemAsync("shelfLayout", cabinets);
             _cabinetSubject.OnNext(cabinets);
         }
+
         public async Task UpdateCabinetAsync(Cabinet updatedCabinet)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
             var index = cabinets.FindIndex(c => c.Number == updatedCabinet.Number);
             if (index != -1)
             {
                 cabinets[index] = updatedCabinet;
-                await _localStorage.SetItemAsync("shelfLayout", cabinets);
+                await localStorage.SetItemAsync("shelfLayout", cabinets);
                 _cabinetSubject.OnNext(cabinets);
             }
             else
@@ -170,9 +212,11 @@ namespace shelf_viz_mod.Data.Services
                 throw new KeyNotFoundException($"Cabinet with ID {updatedCabinet.Number} not found.");
             }
         }
+
         public async Task UpdateLaneAsync(int cabinetId, int rowId, Lane updatedLane)
         {
-            var cabinets = await _localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
+            var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
+            var cabinets = await localStorage.GetItemAsync<List<Cabinet>>("shelfLayout") ?? new List<Cabinet>();
             var cabinet = cabinets.FirstOrDefault(c => c.Number == cabinetId);
             if (cabinet == null)
             {
@@ -189,7 +233,7 @@ namespace shelf_viz_mod.Data.Services
             if (laneIndex != -1)
             {
                 row.Lanes[laneIndex] = updatedLane;
-                await _localStorage.SetItemAsync("shelfLayout", cabinets);
+                await localStorage.SetItemAsync("shelfLayout", cabinets);
                 _cabinetSubject.OnNext(cabinets);
             }
             else
@@ -200,4 +244,5 @@ namespace shelf_viz_mod.Data.Services
 
 
     }
+
 }
