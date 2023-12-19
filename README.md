@@ -11,7 +11,7 @@ The tool is primarily aimed at operations team members with a focus on inventory
 ## Key Features
 
 -   **Shelf Layout Visualization**: Displays a visual representation of the store's shelf layout, highlighting positions of different SKU drinks.
--   **Shelf Layout Modification**: Enables users to add, move, or remove SKU drinks from the shelves.
+-   **Shelf Layout Modification**: Enables users to add, move, or remove SKU drinks from the shelves. This includes the capability to change the positions of SKUs via a drag-and-drop interface, offering a convenient and intuitive way to rearrange products on the shelf.
 
 ## Data Specification
 
