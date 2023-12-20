@@ -30,6 +30,7 @@ The tool is primarily aimed at operations team members with a focus on inventory
 3. Execute `dotnet restore` to restore all the necessary packages.
 4. Run `dotnet build` to build the project.
 5. Execute `dotnet run` to start the application.
+6. Access the app at [http://localhost:5290](http://localhost:5290/)
 
 ## Testing
 
