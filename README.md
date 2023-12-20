@@ -12,6 +12,7 @@ This project presents a demo of a user-friendly interface for managing SKUs (Sto
 -   **Reactive Real-Time Updates**: Changes in the SKU placement are instantly reflected, providing a seamless user experience.
 -   **Modular Services with Dependency Injection**: Ensures a flexible and scalable application architecture.
 -   **Responsive and Accessible Design**: The design adapts to various screen sizes and supports accessibility standards.
+-   **Progressive Web Application (PWA) Support**: The app is designed as a Progressive Web Application, making it highly accessible across various devices. It utilizes local storage for efficient data management, allowing offline access and enhanced user experience.
 
 ## Target User
 
@@ -22,18 +23,13 @@ The tool is primarily aimed at operations team members with a focus on inventory
 -   **SKU**: Represents individual items with properties like JanCode, Name, Drink Size, Product Size, Shape Type, Image URL, and Time Stamp.
 -   **Shelf**: Represents the physical shelf structure in the store, including Cabinets, Rows, and Lanes with detailed specifications.
 
-## Technical Requirements
-
--   Frontend developed using Blazor.
--   Reactive Programming implemented for real-time data updates.
--   Dependency Injection for service management.
--   Application structured following Clean Architecture principles.
-
 ## Installation and Setup
 
 1. Clone the repository or extract the zipped file.
 2. Navigate to the `shelf-viz-mod` directory.
-3. Execute `dotnet run` to start the application.
+3. Execute `dotnet restore` to restore all the necessary packages.
+4. Run `dotnet build` to build the project.
+5. Execute `dotnet run` to start the application.
 
 ## Testing
 
