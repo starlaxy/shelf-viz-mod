@@ -18,5 +18,6 @@ builder.Services.AddSingleton<IShelfService, ShelfService>();
 builder.Services.AddScoped<IDragStateService, DragStateService>();
 builder.Services.AddSingleton<IScopedServiceFactory, ScopedServiceFactory>();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IModalService, ModalService>();
 
 await builder.Build().RunAsync();

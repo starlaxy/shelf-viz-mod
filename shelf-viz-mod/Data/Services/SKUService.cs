@@ -38,6 +38,38 @@ public class SKUService : ISKUService
         }
     }
 
+    public SKU CreateSKU(string janCode, string name, float x, float y, float z, string imageUrl, int size, SKUShape shape, string? timeStampString = null)
+    {
+        long timeStamp;
+
+        if (string.IsNullOrEmpty(timeStampString))
+        {
+            // Get current Unix time in seconds
+            timeStamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        else
+        {
+            if (!long.TryParse(timeStampString, out timeStamp))
+            {
+                throw new ArgumentException("Invalid timestamp value.");
+            }
+
+        }
+
+        return new SKU
+        {
+            JanCode = janCode,
+            Name = name,
+            X = x,
+            Y = y,
+            Z = z,
+            ImageURL = imageUrl,
+            Size = size,
+            TimeStamp = timeStamp,
+            Shape = shape
+        };
+    }
+
     private async Task LoadDataFromCsvAsync()
     {
         var csvContent = await _httpClient.GetStringAsync("sample-data/sku.csv");

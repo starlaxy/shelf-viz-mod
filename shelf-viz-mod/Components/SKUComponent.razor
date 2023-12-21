@@ -6,6 +6,7 @@
      @ondragstart="StartDrag"
      @ondragend="EndDrag"
      @ondrop="() => HandleDrop()"
+     @onclick="onClick"
      ondragover="event.preventDefault();"
       >
     <div class="name-container">
@@ -37,6 +38,9 @@
         DragStateService.OnDragStateChanged -= StateHasChanged;
     }
 
+    private void onClick(){
+        Console.WriteLine("clicked!");
+    }
     private void StartDrag()
     {
         sourceCabinetId = CabinetId;
