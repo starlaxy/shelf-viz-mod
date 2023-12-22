@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "shelf-viz-mod",
   "resources": {
-    "hash": "sha256-nAlXz07QZluaQv7oTq/KqjTjEQEk0nwbnM5LEhlfHR8=",
+    "hash": "sha256-kBVWcr8fbIc3LdPN0BWp00X7gwrfgT1gIb7ISHwbjy8=",
     "jsModuleNative": {
       "dotnet.native.8.0.0.45ykigla5r.js": "sha256-LjLDIz9+J7uuiwMlQ4HbNx2BnSpphOtO2MwkoI28vdI="
     },
@@ -37,7 +37,7 @@
       "Microsoft.Extensions.Primitives.wasm": "sha256-Ms2HR5Gpug/0uRAzdk4SUNT76Ml3CjFv9Jo+dUIMGac=",
       "Microsoft.JSInterop.wasm": "sha256-0D9/j6imBAuGTz7kx1gtrH+sg/kiDYF3I1B7Gu68nCM=",
       "Microsoft.JSInterop.WebAssembly.wasm": "sha256-CQVLCKiSxLN5ghyJZG3mhnMGRROdqrbNUjtAXB0nWb8=",
-      "shelf-viz-mod.wasm": "sha256-F6cYt1uTsK+pXq13NrFdB/Ew/Rr40kKPtnFsg8/dHSE=",
+      "shelf-viz-mod.wasm": "sha256-MhvhWw0uB9/pHCxyI9m/hOFxigsCfXWZGzounVQ8Gxk=",
       "System.Collections.Concurrent.wasm": "sha256-5F90A/JUKyYCq7q2yIgO+0HTXReFTftt3DPsUpnoEKA=",
       "System.Collections.NonGeneric.wasm": "sha256-6qwyd7XX7yQqhhlHl8BJvfR8zIJuKrEDYONtz6cFNAY=",
       "System.Collections.Specialized.wasm": "sha256-wriqyx3dTeVbeIgi5SSckpwpazJ9I2smazHWMg2wtv0=",
