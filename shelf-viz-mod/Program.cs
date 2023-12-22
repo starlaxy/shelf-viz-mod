@@ -20,7 +20,7 @@ else
     // Use the hardcoded production URL
     baseAddress = "https://gorgeous-stardust-085a96.netlify.app/";
 }
-
+Console.WriteLine(new Uri(baseAddress));
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddress) });
 
 builder.Services.AddScoped<ISKUService, SKUService>();
