@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Reactive.Linq;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting; // Make sure to include this
 
 [TestClass]
 public class ShelfServiceTests
@@ -19,6 +20,8 @@ public class ShelfServiceTests
     private Mock<ILocalStorageService>? _localStorageMock;
     private Mock<ILogger<ShelfService>>? _loggerMock;
     private Mock<IScopedServiceFactory>? _scopedServiceFactoryMock;
+    private Mock<IWebAssemblyHostEnvironment>? _webAssemblyHostEnvironmentMock; // Mock for IWebAssemblyHostEnvironment
+
     private ShelfService? _shelfService;
 
     [TestInitialize]
@@ -29,9 +32,11 @@ public class ShelfServiceTests
         _loggerMock = new Mock<ILogger<ShelfService>>();
         _scopedServiceFactoryMock = new Mock<IScopedServiceFactory>();
 
+        _webAssemblyHostEnvironmentMock.Setup(e => e.IsDevelopment()).Returns(true); // Set to false if you need to simulate production
+
         _scopedServiceFactoryMock.Setup(f => f.GetScopedService<ILocalStorageService>()).Returns(_localStorageMock.Object);
 
-        _shelfService = new ShelfService(_httpClientFactoryMock.Object, _loggerMock.Object, _scopedServiceFactoryMock.Object);
+        _shelfService = new ShelfService(_httpClientFactoryMock.Object, _loggerMock.Object, _scopedServiceFactoryMock.Object, _webAssemblyHostEnvironmentMock.Object);
     }
 
     [TestMethod]
