@@ -10,6 +10,7 @@ using System.Reactive.Subjects;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using System.Linq;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 [assembly: InternalsVisibleTo("shelf-viz-mod.Tests")]
 namespace shelf_viz_mod.Data.Services
@@ -21,12 +22,17 @@ namespace shelf_viz_mod.Data.Services
         private readonly IScopedServiceFactory _scopedServiceFactory;
         private BehaviorSubject<IEnumerable<Cabinet>> _cabinetSubject;
         public event Action CabinetsUpdated = delegate { };
+        private readonly IWebAssemblyHostEnvironment _environment;
 
-        public ShelfService(IHttpClientFactory httpClientFactory, ILogger<ShelfService> logger, IScopedServiceFactory scopedServiceFactory)
+        public ShelfService(IHttpClientFactory httpClientFactory,
+                        ILogger<ShelfService> logger,
+                        IScopedServiceFactory scopedServiceFactory,
+                        IWebAssemblyHostEnvironment environment) // Injecting IWebAssemblyHostEnvironment
         {
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _scopedServiceFactory = scopedServiceFactory ?? throw new ArgumentNullException(nameof(scopedServiceFactory));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment)); // Storing the injected environment
             _cabinetSubject = new BehaviorSubject<IEnumerable<Cabinet>>(new List<Cabinet>());
         }
         public async Task InitializeAsync()
@@ -37,9 +43,30 @@ namespace shelf_viz_mod.Data.Services
         {
             try
             {
+                // Determine the base address based on the environment
+                string baseAddress = _environment.IsDevelopment()
+                    ? "http://localhost:5290/"
+                    : "https://gorgeous-stardust-085a96.netlify.app/";
+
+                var requestUrl = $"{baseAddress}sample-data/shelf.json";
+                _logger.LogInformation($"Request URL: {requestUrl}");
+
                 var httpClient = _httpClientFactory.CreateClient();
+                var jsonData = await httpClient.GetStringAsync(requestUrl);
+
+
+                // var httpClient = _httpClientFactory.CreateClient();
+
+                // var baseAddress = _httpClientFactory.CreateClient().BaseAddress?.ToString() ?? string.Empty;
+                // var requestUrl = $"{baseAddress}sample-data/shelf.json";
+
+                Console.WriteLine($"Request URL: {httpClient.BaseAddress}{requestUrl}");
+
+
                 var localStorage = _scopedServiceFactory.GetScopedService<ILocalStorageService>();
-                var jsonData = await httpClient.GetStringAsync("sample-data/shelf.json");
+                // var jsonData = await httpClient.GetStringAsync("sample-data/shelf.json");
+                // var jsonData = await _httpClientFactory.CreateClient().GetStringAsync(requestUrl);
+
                 var shelfData = JsonSerializer.Deserialize<ShelfData>(jsonData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 if (shelfData?.Cabinets != null)
