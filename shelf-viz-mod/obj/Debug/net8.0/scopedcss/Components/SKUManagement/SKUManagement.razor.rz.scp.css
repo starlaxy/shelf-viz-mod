@@ -1,0 +1,19 @@
+.sku-management[b-ujkt6nq41i] {
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+button[b-ujkt6nq41i] {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover[b-ujkt6nq41i] {
+    background-color: #0056b3;
+}

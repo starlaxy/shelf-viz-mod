@@ -1,0 +1,26 @@
+@inject ModalService ModalService
+
+@code {
+    private SKU? _currentSKU;
+
+    protected override void OnInitialized()
+    {
+        ModalService.CurrentSKU.Subscribe(sku =>
+        {
+            _currentSKU = sku;
+            StateHasChanged();
+        });
+    }
+
+    private void SaveChanges()
+    {
+        // Implement logic to save changes to the SKU
+        // This could involve calling a method on SkuService
+    }
+
+    private void DeleteSku()
+    {
+        // Implement logic to delete the SKU
+        // This could involve calling a method on SkuService
+    }
+}
