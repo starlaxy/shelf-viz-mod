@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../buildMultiTargeting/shelf-viz-mod.props" />
-</Project>
