@@ -10,7 +10,18 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+string baseAddress;
+if (builder.HostEnvironment.IsDevelopment())
+{
+    baseAddress = "http://localhost:5290";
+}
+else
+{
+    // Use the hardcoded production URL
+    baseAddress = "https://gorgeous-stardust-085a96.netlify.app/";
+}
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddress) });
 
 builder.Services.AddScoped<ISKUService, SKUService>();
 builder.Services.AddBlazoredLocalStorage();
