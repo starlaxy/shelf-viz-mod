@@ -38,7 +38,7 @@ public class SKUService : ISKUService
         }
     }
 
-    public SKU CreateSKU(string janCode, string name, float x, float y, float z, string imageUrl, int size, SKUShape shape, string? timeStampString = null)
+    public SKU CreateSKU(string janCode, string name, float x, float y, float z, string imageUrl, int size, string shape, string? timeStampString = null)
     {
         long timeStamp;
 

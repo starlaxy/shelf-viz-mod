@@ -8,12 +8,12 @@ public class SKU
     public string ImageURL { get; set; } = string.Empty;
     public int Size { get; set; }
     public long TimeStamp { get; set; }
-    public SKUShape Shape { get; set; }
+    public string Shape { get; set; }
 }
 
 
-public enum SKUShape
-{
-    Bottle,
-    Can
-}
+// public enum SKUShape
+// {
+//     Bottle,
+//     Can
+// }
